@@ -78,21 +78,21 @@ duree = st.text_input("", value="00:00:00", label_visibility="collapsed")
 selected_basemap = st.selectbox("🗺️ Choisis un fond de carte", list(BASEMAPS.keys()))
 custom_title = st.text_input("🖊️ Titre personnalisé pour la carte (facultatif)", value="")
 
-# Obtenir la liste des noms de polices disponibles
-font_names = [
-    "DejaVu Sans",       # propre, sans empattement
-    "Arial",             # classique, très lisible
-    "Times New Roman",   # sérieux, avec empattements
-    "Courier New",       # monospace, look tech
-    "Comic Sans MS",     # informel, détendu
-    "Georgia",           # serif élégant
-    "Trebuchet MS",      # moderne et lisible
-    "Verdana",           # ultra lisible, simple
-    "Impact",            # très épais, pour titres percutants
-    "Lucida Console",     # monospace propre
-    "Arial Black",     # pour A PIED
-    "DIN Alternate",   # si dispo
+
+# Liste souhaitée
+preferred_fonts = [
+    "DejaVu Sans", "Arial", "Times New Roman", "Courier New",
+    "Comic Sans MS", "Georgia", "Trebuchet MS", "Verdana",
+    "Impact", "Lucida Console", "Arial Black", "DIN Alternate"
 ]
+
+# On vérifie celles qui existent vraiment sur l'environnement
+available_fonts = set(f.name for f in fm.fontManager.ttflist)
+font_names = [f for f in preferred_fonts if f in available_fonts]
+
+# Fallback si aucune dispo
+if not font_names:
+    font_names = ["DejaVu Sans"]
 
 # Menu déroulant pour sélectionner la police
 font_choice = st.selectbox("✒️ Choisissez une police pour le titre", options=font_names)
