@@ -1,0 +1,7 @@
+streamlit
+gpxpy
+geopandas
+contextily
+matplotlib
+shapely
+xyzservices
