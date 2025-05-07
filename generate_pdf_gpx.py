@@ -87,16 +87,14 @@ preferred_fonts = [
 ]
 
 # On vérifie celles qui existent vraiment sur l'environnement
-available_fonts = set(f.name for f in fm.fontManager.ttflist)
-font_names = [f for f in preferred_fonts if f in available_fonts]
+# Liste complète des polices disponibles
+all_fonts = sorted(set(f.name for f in fm.fontManager.ttflist))
 
-# Fallback si aucune dispo
-if not font_names:
-    font_names = ["DejaVu Sans"]
-
-# Menu déroulant pour sélectionner la police
-font_choice = st.selectbox("✒️ Choisissez une police pour le titre", options=font_names)
-
+# Sélecteur dans Streamlit
+font_choice = st.selectbox(
+    "✒️ Choisissez une police parmi celles installées :", 
+    options=all_fonts
+)
 # Afficher un aperçu de la police sélectionnée
 
 fig, ax = plt.subplots(figsize=(6, 0.8))  # figure fine en hauteur
