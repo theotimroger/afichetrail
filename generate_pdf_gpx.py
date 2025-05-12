@@ -122,54 +122,45 @@ elif st.session_state.example_path:
     distance_km = round(distances[-1], 2) if distances else 0
     dplus, dmoins = calculate_deniv(elevations)
 
-date_race = st.text_input("Date", value="", label_visibility="visible")
+with st.sidebar:
+    date_race = st.text_input("Date", value="", label_visibility="visible")
 
-nom = st.text_input("Nom", value="", label_visibility="visible")
+    nom = st.text_input("Nom", value="", label_visibility="visible")
 
-duree = st.text_input("Temps", value="", label_visibility="visible")
+    duree = st.text_input("Temps", value="", label_visibility="visible")
 
-num_dossard = st.text_input("# Dossard", value="")
+    num_dossard = st.text_input("# Dossard", value="")
 
-selected_basemap = st.selectbox("🗺️ Choisis un fond de carte", list(BASEMAPS.keys()))
-custom_title = st.text_input("🖊️ Titre personnalisé pour la carte", value="")
+    selected_basemap = st.selectbox("🗺️ Choisis un fond de carte", list(BASEMAPS.keys()))
+    custom_title = st.text_input("🖊️ Titre personnalisé pour la carte", value="")
 
 
-# Liste souhaitée
-preferred_fonts = [
-"Fonts/Antonio-VariableFont_wght.ttf", "Fonts/RacingSansOne-Regular.ttf"
-]
+    # Liste souhaitée
+    preferred_fonts = [
+    "Fonts/Antonio-VariableFont_wght.ttf", "Fonts/RacingSansOne-Regular.ttf"
+    ]
 
-# On vérifie celles qui existent vraiment sur l'environnement
-# Liste complète des polices disponibles
-#all_fonts = sorted(set(f.name for f in fm.fontManager.ttflist))
+    # On vérifie celles qui existent vraiment sur l'environnement
+    # Liste complète des polices disponibles
+    #all_fonts = sorted(set(f.name for f in fm.fontManager.ttflist))
 
-# Sélecteur dans Streamlit
-font_choice = st.selectbox(
-    "✒️ Choisissez une police parmi celles installées :", 
-    options=preferred_fonts
-)
-# Afficher un aperçu de la police sélectionnée
+    # Sélecteur dans Streamlit
+    font_choice = st.selectbox(
+        "✒️ Choisissez une police parmi celles installées :", 
+        options=preferred_fonts
+    )
 
-fig, ax = plt.subplots(figsize=(6, 0.8))  # figure fine en hauteur
-ax.text(0.5, 0.5, custom_title, fontsize=18, fontname=font_choice,
-        ha='center', va='center')
+    # 🎨 Personnalisation des couleurs
+    col1, col2 = st.columns(2)
 
-ax.axis('off')
-plt.subplots_adjust(left=0, right=1, top=1, bottom=0)  # aucune marge
+    with col1:
+        trace_color = st.color_picker("🟥 Couleur de la trace GPX", value="#000000")
 
-st.pyplot(fig)
+    with col2:
+        border_color = st.color_picker("⬛ Couleur du cadre de la carte", value="#FFFFFF")
 
-# 🎨 Personnalisation des couleurs
-col1, col2 = st.columns(2)
-
-with col1:
-    trace_color = st.color_picker("🟥 Couleur de la trace GPX", value="#000000")
-
-with col2:
-    border_color = st.color_picker("⬛ Couleur du cadre de la carte", value="#FFFFFF")
-
-padding_factor = st.slider("Sélectionnez une valeur de padding", min_value=0.0, max_value=0.5, step=0.05)
-size_border = st.slider("Sélectionnez une taille pour les bords", min_value=0, max_value=20, step=1)
+    padding_factor = st.slider("Sélectionnez une valeur de padding", min_value=0.0, max_value=0.5, step=0.05)
+    size_border = st.slider("Sélectionnez une taille pour les bords", min_value=0, max_value=20, step=1)
 
 if uploaded_file is not None:
     uploaded_file.seek(0)
