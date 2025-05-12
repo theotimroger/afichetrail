@@ -12,6 +12,9 @@ from xyzservices import TileProvider
 import matplotlib.gridspec as gridspec
 import matplotlib.patches as patches
 import matplotlib.font_manager as fm
+import numpy as np
+from matplotlib.font_manager import FontProperties
+from PIL import Image, ImageDraw, ImageFont
 
 
 # 📍 Fonctions principales
@@ -65,7 +68,7 @@ def process_gpx(gpx_content):
 
     return distances, elevations, distances_pace, coords
 
-def get_adaptive_fontsize(title, max_chars=30, base_size=40, min_size=14):
+def get_adaptive_fontsize(title, max_chars=20, base_size=40, min_size=14):
     """
     Calcule dynamiquement une taille de police en fonction de la longueur du titre.
     """
@@ -88,35 +91,20 @@ def calculate_deniv(elevations):
             d_moins.append(d_moins[-1]+deniv_segment)
     return round(d_plus[-1]), round(d_moins[-1])
 
-def plot_gpx_map(gdf, distances, elevations,name,date, basemap,duree="", title="", fontname="DejaVu Sans", trace_color="red", border_color="red"):
+def plot_gpx_map(gdf, distances, elevations,name,date,num_dossard, padding_factor=0.2, size_border=2, basemap="OpenStreetMap.Mapnik",duree="", title="", fontname="DejaVu Sans", trace_color="red", border_color="red"):
     fig = plt.figure(figsize=(8.27, 11.69))  # A4
-    fig.subplots_adjust(left=0.05, right=0.95, top=0.98, bottom=0.05, hspace = 0.1)
-    gs = gridspec.GridSpec(3, 1, height_ratios=[0.05, 0.70, 0.25])
-
-    # Titre
-    ax_title = fig.add_subplot(gs[0])
-    ax_title.axis("off")
-
-    titre_affiche = title.upper()
-    fontsize = get_adaptive_fontsize(titre_affiche)
-
-    ax_title.text(
-        0.5, 0.5, titre_affiche,
-        ha="center", va="center",
-        fontsize=fontsize,
-        fontname=fontname
-    )
+    fig.subplots_adjust(left=0.05, right=0.95, top=0.98, bottom=0.05, hspace=0)
+    gs = gridspec.GridSpec(2, 1, height_ratios=[0.74, 0.26])
 
     # Carte
-    ax_map = fig.add_subplot(gs[1])
-    gdf.plot(ax=ax_map, linewidth=2, color=trace_color)
-
-    # Forcer carré + ajouter un padding (12 % de marge)
+    ax_map = fig.add_subplot(gs[0])
+    gdf.plot(ax=ax_map, linewidth=3, color=trace_color)
     xmin, ymin, xmax, ymax = gdf.total_bounds
     width = xmax - xmin
     height = ymax - ymin
-    padding = 0.2 * max(width, height)  # 12% d’espace
+    #ajout padding pour que la trace ne touche pas les bords
 
+    padding = padding_factor * max(width, height)
     if width > height:
         delta = (width - height) / 2
         ymin -= delta
@@ -125,181 +113,98 @@ def plot_gpx_map(gdf, distances, elevations,name,date, basemap,duree="", title="
         delta = (height - width) / 2
         xmin -= delta
         xmax += delta
-
-    # Appliquer le padding sur tous les côtés
+    
+    
     xmin -= padding
     xmax += padding
     ymin -= padding
     ymax += padding
-
     ax_map.set_xlim(xmin, xmax)
     ax_map.set_ylim(ymin, ymax)
     ax_map.set_aspect("equal", adjustable="box")
     ax_map.set_axis_off()
-    # Points de départ et d'arrivée
+
+
     start_point = gdf.geometry[0].coords[0]
     end_point = gdf.geometry[0].coords[-1]
-
-    # Départ : cercle avec bord couleur trace et fond blanc
-    ax_map.scatter(
-        [start_point[0]], [start_point[1]],
-        s=8, facecolors='white', edgecolors=trace_color, linewidths=1, zorder=11
-    )
-
-    # Arrivée : cercle plein couleur trace
-    ax_map.scatter(
-        [end_point[0]], [end_point[1]],
-        s=8, color=trace_color, zorder=11
-    )
-
-            # Dessiner un cadre autour de la carte
-    rect = patches.Rectangle(
-        (xmin, ymin),
-        xmax - xmin,
-        ymax - ymin,
-        linewidth=2,
-        edgecolor=border_color,  # même couleur que la trace
-        facecolor='none',
-        zorder=10  # au-dessus du fond de carte
-    )
+    ax_map.scatter([start_point[0]], [start_point[1]], s=8, facecolors='white', edgecolors=trace_color, linewidths=1, zorder=11)
+    ax_map.scatter([end_point[0]], [end_point[1]], s=8, color=trace_color, zorder=11)
+    rect = patches.Rectangle((xmin, ymin), xmax - xmin, ymax - ymin, linewidth=size_border, edgecolor=border_color, facecolor='none', zorder=10)
     ax_map.add_patch(rect)
-
-
-    # Ici : ajout du fond de carte à `ax_map`
     if isinstance(basemap, str):
         basemap_obj = ctx.providers.flatten()[basemap]
     else:
         basemap_obj = basemap
-
     ctx.add_basemap(ax_map, source=basemap_obj, crs=gdf.crs)
 
-    # Infos supplémentaires en bas
-    # --- Bas de page : Infos + Profil Altimétrique ---
-    gs_footer = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=gs[2], height_ratios=[0.3, 0.7])
+    font_prop = FontProperties(fname=fontname)
+    if fontname == "Fonts/Antonio-VariableFont_wght.ttf":
+        fontsize_title = 35
+    elif fontname == "Fonts/RacingSansOne-Regular.ttf":
+        fontsize_title = 30
+    
+    # Nouveau footer : 2 lignes, 3 colonnes puis 2 colonnes
+    gs_footer = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=gs[1], height_ratios=[0.45, 0.55], hspace=0.01)
+    gs_footer_top = gridspec.GridSpecFromSubplotSpec(1, 3, subplot_spec=gs_footer[0], width_ratios=[0.4, 1.5, 0.4])
+    gs_footer_bottom = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec=gs_footer[1], width_ratios=[2, 1])
 
-    # 📄 Texte d'infos
-    ax_info = fig.add_subplot(gs_footer[0])
-    ax_info.axis("off")
+    # 📄 Colonne gauche : infos 1
+    ax_info1 = fig.add_subplot(gs_footer_top[0])
+    ax_info1.axis("off")
     dplus, dmoins = calculate_deniv(elevations)
     distance_total = round(distances[-1], 2)
-    footer_text = f"{name} | {date} \nDistance : {distance_total} km| D+ : {dplus} m | D- : {abs(dmoins)} m \n{duree}"
-    ax_info.text(0.5, 0.5, footer_text, ha="center", va="center", fontsize=13, fontname=fontname)
+    info_text1 = f"{date}\n{distance_total:.2f}KM\nD+ {dplus}m"
+    ax_info1.text(0.05, 1.1, info_text1, ha="left", va="top", fontsize=16, fontproperties=font_prop,weight="bold", clip_on=False)
 
-    # ⛰️ Profil altimétrique
-    ax_elev = fig.add_subplot(gs_footer[1])
-    ax_elev.plot(distances, elevations, color=trace_color, linewidth=1.5)
+    # 🏔️ Colonne centrale : profil
+    ax_elev = fig.add_subplot(gs_footer_top[1])
+    ax_elev.plot(distances, elevations, color=trace_color, linewidth=3)
     ax_elev.axis("off")
 
+    # 🧑‍🦱 Colonne droite : infos 2
+    ax_info2 = fig.add_subplot(gs_footer_top[2])
+    ax_info2.axis("off")
+    info_text2 = f"{name}\n#{num_dossard}"
+    ax_info2.text(0.95, 1.1, info_text2, ha="right", va="top", fontsize=16, fontproperties=font_prop, weight="bold", clip_on=False)
 
-def compose_single_page_pdf(gdf, distances, elevations,name,date, basemap,duree="", title="", fontname="DejaVu Sans", trace_color="red", border_color="red"):
+    # 🏷️ Ligne titre + temps : titre gauche (2 lignes), durée droite
+    ax_title_left = fig.add_subplot(gs_footer_bottom[0])
+    ax_title_right = fig.add_subplot(gs_footer_bottom[1])
+    ax_title_left.axis("off")
+    ax_title_right.axis("off")
+
+    first_line, second_line = split_title_words(title.upper())
+
+    ax_title_left.text(0.01, 0.6, first_line, ha="left", va="center", fontsize = fontsize_title, fontproperties=font_prop)
+    ax_title_left.text(0.01, 0.3, second_line, ha="left", va="center", fontsize = fontsize_title, fontproperties=font_prop, weight="bold")
+
+    ax_title_right.text(0.99, 0.3, duree, ha="right", va="center", fontsize=35, fontproperties=font_prop)
+
+    return fig
+
+
+
+def compose_single_page_pdf(gdf, distances, elevations,name,date,num_dossard, padding_factor=0.2, size_border=2, basemap="OpenStreetMap.Mapnik",duree="", title="", fontname="DejaVu Sans", trace_color="red", border_color="red"):
     
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-        fig = plt.figure(figsize=(8.27, 11.69))  # A4
-        fig.subplots_adjust(left=0.05, right=0.95, top=0.98, bottom=0.05, hspace = 0.1)
-        gs = gridspec.GridSpec(3, 1, height_ratios=[0.05, 0.70, 0.25])
-
-        # Titre
-        ax_title = fig.add_subplot(gs[0])
-        ax_title.axis("off")
-
-        titre_affiche = title.upper()
-        fontsize = get_adaptive_fontsize(titre_affiche)
-
-        ax_title.text(
-            0.5, 0.5, titre_affiche,
-            ha="center", va="center",
-            fontsize=fontsize,
-            fontname=fontname
-        )
-
-        # Carte
-        ax_map = fig.add_subplot(gs[1])
-        gdf.plot(ax=ax_map, linewidth=2, color=trace_color)
-
-        # Forcer carré + ajouter un padding (12 % de marge)
-        xmin, ymin, xmax, ymax = gdf.total_bounds
-        width = xmax - xmin
-        height = ymax - ymin
-        padding = 0.2 * max(width, height)  # 12% d’espace
-
-        if width > height:
-            delta = (width - height) / 2
-            ymin -= delta
-            ymax += delta
-        else:
-            delta = (height - width) / 2
-            xmin -= delta
-            xmax += delta
-
-        # Appliquer le padding sur tous les côtés
-        xmin -= padding
-        xmax += padding
-        ymin -= padding
-        ymax += padding
-
-        ax_map.set_xlim(xmin, xmax)
-        ax_map.set_ylim(ymin, ymax)
-        ax_map.set_aspect("equal", adjustable="box")
-        ax_map.set_axis_off()
-        # Points de départ et d'arrivée
-        start_point = gdf.geometry[0].coords[0]
-        end_point = gdf.geometry[0].coords[-1]
-
-        # Départ : cercle avec bord couleur trace et fond blanc
-        ax_map.scatter(
-            [start_point[0]], [start_point[1]],
-            s=8, facecolors='white', edgecolors=trace_color, linewidths=1, zorder=11
-        )
-
-        # Arrivée : cercle plein couleur trace
-        ax_map.scatter(
-            [end_point[0]], [end_point[1]],
-            s=8, color=trace_color, zorder=11
-        )
-
-                # Dessiner un cadre autour de la carte
-        rect = patches.Rectangle(
-            (xmin, ymin),
-            xmax - xmin,
-            ymax - ymin,
-            linewidth=2,
-            edgecolor=border_color,  # même couleur que la trace
-            facecolor='none',
-            zorder=10  # au-dessus du fond de carte
-        )
-        ax_map.add_patch(rect)
-
-
-        # Ici : ajout du fond de carte à `ax_map`
-        if isinstance(basemap, str):
-            basemap_obj = ctx.providers.flatten()[basemap]
-        else:
-            basemap_obj = basemap
-
-        ctx.add_basemap(ax_map, source=basemap_obj, crs=gdf.crs)
-
-        # Infos supplémentaires en bas
-        # --- Bas de page : Infos + Profil Altimétrique ---
-        gs_footer = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=gs[2], height_ratios=[0.3, 0.7])
-
-        # 📄 Texte d'infos
-        ax_info = fig.add_subplot(gs_footer[0])
-        ax_info.axis("off")
-        dplus, dmoins = calculate_deniv(elevations)
-        distance_total = round(distances[-1], 2)
-        footer_text = f"{name} | {date} \nDistance : {distance_total} km| D+ : {dplus} m | D- : {abs(dmoins)} m \n{duree}"
-        ax_info.text(0.5, 0.5, footer_text, ha="center", va="center", fontsize=13, fontname=fontname)
-
-        # ⛰️ Profil altimétrique
-        ax_elev = fig.add_subplot(gs_footer[1])
-        ax_elev.plot(distances, elevations, color=trace_color, linewidth=1.5)
-        ax_elev.axis("off")
-        
+        fig = plot_gpx_map(gdf, distances, elevations,name,date,num_dossard,padding_factor,size_border, basemap,duree, title, fontname, trace_color, border_color)
 
         # Enregistrer PDF
         with PdfPages(tmp.name) as pdf:
-            pdf.savefig(fig)
+            pdf.savefig(fig, dpi=300)
         plt.close(fig)
         return tmp.name
-    
+
+
+
+def split_title_words(title, max_words_first_line=2):
+    if title is None:
+        return ""
+    else:
+        words = title.strip().split()
+        if len(words) <= max_words_first_line:
+            return "" "", title
+        first_line = " ".join(words[:max_words_first_line])
+        second_line = " ".join(words[max_words_first_line:])
+    return first_line, second_line
