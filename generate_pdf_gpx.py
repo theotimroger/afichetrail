@@ -194,6 +194,8 @@ if uploaded_file is not None:
             name = nom,
             date = date_race,
             num_dossard=num_dossard,
+            padding_factor=padding_factor,
+            size_border=size_border,
             basemap=BASEMAPS[selected_basemap],
             duree=duree,
             title=custom_title,
